@@ -1,0 +1,84 @@
+✅ STEP 1: Create a new project folder
+ mkdir node-mongo-docker
+ cd node-mongo-docker
+ ✅ STEP 2: Create package.json
+ npm init -y
+ ✅ STEP 3: Install dependencies
+ npm install express mongoose
+ ✅ STEP 4: Create server.js
+ Create a file server.js:
+ const express = require('express');
+ const mongoose = require('mongoose');
+ const app = express();
+ app.use(express.json());
+ // MongoDB connection
+ mongoose.connect('mongodb://mongo:27017/mydb')
+ .then(() => console.log("Connected to MongoDB"))
+ .catch(err => console.error("DB Connection Error:", err));
+ // Schema + Model
+ const userSchema = new mongoose.Schema({
+id: Number,
+ name: String,
+ address: String
+ });
+ const User = mongoose.model("User", userSchema);
+ // API Endpoint: GET /users
+ app.get('/users', async (req, res) => {
+ const users = await User.find();
+ res.json(users);
+ });
+ app.listen(3000, () => {
+ console.log("Node server running on port 3000");
+ });
+ ✅ STEP 5: Create a script to seed default users
+ Create a file seed.js:
+ const mongoose = require("mongoose");
+ mongoose.connect("mongodb://mongo:27017/mydb")
+ .then(async () => {
+ const User = mongoose.model("User", new mongoose.Schema({
+ id: Number,
+name: String,
+ address: String
+ }));
+ await User.deleteMany(); // Clear old data
+ await User.insertMany([
+ { id: 1, name: "Kunal", address: "Pune" },
+ { id: 2, name: "Omkar", address: "Mumbai" },
+ { id: 3, name: "Ravi", address: "Delhi" }
+ ]);
+ console.log("Users inserted");
+ process.exit();
+ })
+ .catch(err => console.error(err));
+ ✅ STEP 6: Create a Dockerfile for the Node app
+ Create a file Dockerfile:
+ FROM node:18-alpine
+ WORKDIR /app
+ COPY package*.json ./
+ RUN npm install
+COPY . .
+ EXPOSE 3000
+ CMD ["node", "server.js"]
+ ✅ STEP 7: Create docker-compose.yml to run Node + MongoDB
+ This is important — MongoDB will run in its own container.
+ Create a file docker-compose.yml:
+ version: "3.8"
+ services:
+ mongo:
+ image: mongo:latest
+ container_name: mongo-container
+ ports:- "27017:27017"
+ volumes:- mongo_data:/data/db
+ node-app:
+ build: .
+ container_name: node-mongo-app
+ ports:
+- "3000:3000"
+ depends_on:- mongo
+ volumes:
+ mongo_data:
+ ✅ STEP 8: Build and run both containers
+ docker compose up --build -d
+ ✅ STEP 9: Seed the MongoDB database with initial users
+ Run the seeding script inside the Node container:
+ docker exec -it node-mongo-app node seed.js

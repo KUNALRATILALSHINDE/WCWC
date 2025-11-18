@@ -1,0 +1,124 @@
+1️⃣ Create project folder
+mkdir node-mysql-app
+cd node-mysql-app
+
+2️⃣ Create these files
+
+Create 5 files:
+
+app.js
+package.json
+Dockerfile
+docker-compose.yml
+init.sql
+
+3️⃣ package.json
+{
+  "name": "node-mysql-app",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0"
+  }
+}
+
+4️⃣ app.js
+const express = require('express');
+const mysql = require('mysql2/promise');
+const app = express();
+
+const pool = mysql.createPool({
+    host: 'db',
+    user: 'root',
+    password: 'password',
+    database: 'mydb'
+});
+
+app.get('/', (req, res) => {
+    res.send('Welcome to Dockerized Web App');
+});
+
+app.get('/users', async (req, res) => {
+    const [rows] = await pool.query('SELECT * FROM users');
+    res.json(rows);
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));
+
+5️⃣ Dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["node", "app.js"]
+
+6️⃣ docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: mydb
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-net
+
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    networks:
+      - app-net
+
+volumes:
+  mysql_data:
+
+networks:
+  app-net:
+
+7️⃣ init.sql
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100)
+);
+
+INSERT INTO users (name) VALUES
+('John'),
+('Kunal'),
+('Amit');
+
+8️⃣ Start everything
+docker-compose up --build
+
+9️⃣ Test
+Root:
+http://localhost:3000
+
+
+Expected:
+
+Welcome to Dockerized Web App
+
+Users:
+http://localhost:3000/users
+
+
+Expected JSON:
+
+[
+  { "id": 1, "name": "John" },
+  { "id": 2, "name": "Kunal" },
+  { "id": 3, "name": "Amit" }
+]
